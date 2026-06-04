@@ -65,7 +65,7 @@ tofu apply     # creates cluster + 2 system nodes (~5-10 min)
 cd ..
 ```
 
-**What gets created:** 1 MK8s cluster (K8s 1.31, public endpoint), 2× cpu-d3/8vcpu-32gb system nodes, 1 autoscaling ray-compute node group (starts at 0 nodes, scales up when a job arrives).
+**What gets created:** 1 MK8s cluster (K8s 1.31, public endpoint), 2× cpu-e2/4vcpu-16gb system nodes, 1 autoscaling ray-compute node group (starts at 0 nodes, scales up when a job arrives).
 
 **Cost:** System nodes bill hourly while running. Ray workers cost nothing when no job is active (0 nodes).
 
