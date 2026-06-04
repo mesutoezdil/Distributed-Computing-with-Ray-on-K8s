@@ -1,0 +1,13 @@
+# Copy to tofu.tfvars and adjust, or rely on scripts/00-auth.sh, which
+# exports project_id and subnet_id as TF_VAR_* environment variables.
+
+# project_id = "project-..."
+# subnet_id  = "vpcsubnet-..."
+
+cluster_name = "ray-montecarlo"
+
+# For the benchmark run that goes into the book, flip this to false so all
+# nodes exist before the job starts and node provisioning latency stays out
+# of the measured wall time:
+ray_autoscaling_enabled = true
+ray_max_nodes           = 36

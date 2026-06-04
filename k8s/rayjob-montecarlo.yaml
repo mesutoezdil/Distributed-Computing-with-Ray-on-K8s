@@ -1,0 +1,56 @@
+# Full lab run: 100 workers x 4 CPU = 400 CPUs, 2,000 tasks x 1M paths.
+# Routed through Kueue (label + suspend), token auth enabled, head work-free.
+# The simulation script is mounted from the montecarlo-src ConfigMap created
+# by scripts/10-bootstrap.sh, so the stock Ray image works without a registry.
+apiVersion: ray.io/v1
+kind: RayJob
+metadata:
+  name: montecarlo-pricing
+  namespace: quant-team
+  labels:
+    kueue.x-k8s.io/queue-name: hpc-local   # arbitrated by the hpc-local queue
+spec:
+  suspend: true                            # no pods until Kueue admits
+  entrypoint: python /app/price_option.py
+  shutdownAfterJobFinishes: true
+  ttlSecondsAfterFinished: 900
+  rayClusterSpec:
+    rayVersion: "2.55.1"
+    authOptions:
+      mode: token
+    headGroupSpec:
+      rayStartParams:
+        num-cpus: "0"                      # keep application work off the head
+      template:
+        spec:
+          containers:
+            - name: ray-head
+              image: rayproject/ray:2.55.1
+              resources:
+                requests: { cpu: "2", memory: 8Gi }
+                limits: { cpu: "2", memory: 8Gi }
+              volumeMounts:
+                - name: montecarlo-src
+                  mountPath: /app
+          volumes:
+            - name: montecarlo-src
+              configMap:
+                name: montecarlo-src
+    workerGroupSpecs:
+      - groupName: simulators
+        replicas: 100
+        minReplicas: 100
+        maxReplicas: 100
+        rayStartParams: {}
+        template:
+          spec:
+            tolerations:
+              - key: workload/ray          # matches the ray-compute node group taint
+                operator: Exists
+                effect: NoSchedule
+            containers:
+              - name: ray-worker
+                image: rayproject/ray:2.55.1
+                resources:
+                  requests: { cpu: "4", memory: 8Gi }
+                  limits: { cpu: "4", memory: 8Gi }

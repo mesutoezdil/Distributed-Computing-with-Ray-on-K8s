@@ -1,0 +1,32 @@
+# Kueue queue objects for the lab. Quota is sized for the full 100-worker run:
+# 100 workers x 4 CPU + head 2 CPU + submitter = ~410 CPU; 500 leaves headroom
+# but admits only 1 full-size job at a time, which is what the chapter's
+# "2 jobs, 1 quota" demonstration relies on.
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: default-flavor
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: hpc-queue
+spec:
+  namespaceSelector: {}
+  resourceGroups:
+    - coveredResources: ["cpu", "memory"]
+      flavors:
+        - name: default-flavor
+          resources:
+            - name: cpu
+              nominalQuota: 500
+            - name: memory
+              nominalQuota: 2000Gi
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: hpc-local
+  namespace: quant-team
+spec:
+  clusterQueue: hpc-queue

@@ -1,0 +1,58 @@
+# Smoke test: same pipeline at 1/10 scale (10 workers, 200 tasks x 1M paths).
+# Validates Kueue admission, taints/tolerations, the ConfigMap mount, and the
+# math (price still converges near 6.04) before you pay for the full burst.
+apiVersion: ray.io/v1
+kind: RayJob
+metadata:
+  name: montecarlo-smoke
+  namespace: quant-team
+  labels:
+    kueue.x-k8s.io/queue-name: hpc-local
+spec:
+  suspend: true
+  entrypoint: python /app/price_option.py
+  shutdownAfterJobFinishes: true
+  ttlSecondsAfterFinished: 900
+  runtimeEnvYAML: |
+    env_vars:
+      NUM_TASKS: "200"
+  rayClusterSpec:
+    rayVersion: "2.55.1"
+    authOptions:
+      mode: token
+    headGroupSpec:
+      rayStartParams:
+        num-cpus: "0"
+      template:
+        spec:
+          containers:
+            - name: ray-head
+              image: rayproject/ray:2.55.1
+              resources:
+                requests: { cpu: "2", memory: 8Gi }
+                limits: { cpu: "2", memory: 8Gi }
+              volumeMounts:
+                - name: montecarlo-src
+                  mountPath: /app
+          volumes:
+            - name: montecarlo-src
+              configMap:
+                name: montecarlo-src
+    workerGroupSpecs:
+      - groupName: simulators
+        replicas: 10
+        minReplicas: 10
+        maxReplicas: 10
+        rayStartParams: {}
+        template:
+          spec:
+            tolerations:
+              - key: workload/ray
+                operator: Exists
+                effect: NoSchedule
+            containers:
+              - name: ray-worker
+                image: rayproject/ray:2.55.1
+                resources:
+                  requests: { cpu: "4", memory: 8Gi }
+                  limits: { cpu: "4", memory: 8Gi }
