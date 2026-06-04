@@ -1,0 +1,12 @@
+# OpenTofu state - never commit
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Kubeconfig and secrets
+kubeconfig*
+*.pem
+*.key
+
+# Python
+__pycache__/
