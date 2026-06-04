@@ -37,7 +37,7 @@ variable "system_preset" {
 variable "system_node_count" {
   description = "Fixed size of the system node group."
   type        = number
-  default     = 2
+  default     = 1
 }
 
 # --- Ray compute node group: tainted, autoscaled, scale-to-zero ---
