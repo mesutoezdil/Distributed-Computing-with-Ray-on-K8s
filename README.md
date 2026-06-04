@@ -40,7 +40,11 @@ app/
 - OpenTofu >= 1.8 → https://opentofu.org/docs/intro/install/
 - Nebius CLI installed and authenticated (`nebius profile create`)
 - `jq`, `kubectl` >= 1.31, `helm` >= 3.14
-- Nebius project with ~430 vCPU quota (full run; smoke test needs ~40 vCPU)
+- Nebius project with sufficient vCPU quota:
+  - System node: 4 vCPU (1× cpu-e2/4vcpu-16gb, always on)
+  - Smoke test: +16 vCPU (2× cpu-e2/16vcpu-64gb ray nodes)
+  - Full run: +544 vCPU (~34× cpu-e2/16vcpu-64gb ray nodes)
+  - Request a quota increase at Nebius → Administration → Limits if needed
 
 ---
 
@@ -61,11 +65,11 @@ source scripts/00-auth.sh
 cd tofu
 tofu init      # downloads the Nebius provider from the registry
 tofu plan      # previews what will be created, no cost yet
-tofu apply     # creates cluster + 2 system nodes (~5-10 min)
+tofu apply     # creates cluster + 1 system node (~5-10 min)
 cd ..
 ```
 
-**What gets created:** 1 MK8s cluster (K8s 1.31, public endpoint), 2× cpu-e2/4vcpu-16gb system nodes, 1 autoscaling ray-compute node group (starts at 0 nodes, scales up when a job arrives).
+**What gets created:** 1 MK8s cluster (K8s 1.31, public endpoint), 1× cpu-e2/4vcpu-16gb system node (runs operators + Ray head), 1 autoscaling ray-compute node group (starts at 0 nodes, scales up when a job arrives).
 
 **Cost:** System nodes bill hourly while running. Ray workers cost nothing when no job is active (0 nodes).
 
@@ -112,7 +116,7 @@ kubectl -n quant-team logs -l job-name=montecarlo-pricing --tail=5
 
 | State | Active resources | Duration |
 |-------|-----------------|----------|
-| Cluster up, no job | 2 system nodes | Ongoing |
+| Cluster up, no job | 1 system node | Ongoing |
 | Smoke test | +4 ray nodes | ~15-20 min |
 | Full run | +~34 ray nodes | ~30-40 min |
 | After `tofu destroy` | Nothing | — |
