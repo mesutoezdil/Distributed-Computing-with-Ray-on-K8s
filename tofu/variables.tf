@@ -25,13 +25,13 @@ variable "k8s_version" {
 variable "system_platform" {
   description = "CPU platform for system nodes."
   type        = string
-  default     = "cpu-d3"
+  default     = "cpu-e2"
 }
 
 variable "system_preset" {
-  description = "Resource preset for system nodes. 8vcpu-32gb fits the operators plus a 2vCPU/8Gi Ray head with room to spare."
+  description = "Resource preset for system nodes. 4vcpu-16gb is sufficient for operators and the Ray head pod."
   type        = string
-  default     = "8vcpu-32gb"
+  default     = "4vcpu-16gb"
 }
 
 variable "system_node_count" {
