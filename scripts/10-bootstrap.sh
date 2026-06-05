@@ -48,7 +48,8 @@ ssh "${SSH_USER}@${VM_IP}" "
   mkdir -p ~/.kube
   sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
   sudo chown ${SSH_USER}:${SSH_USER} ~/.kube/config
-  grep -q 'KUBECONFIG' ~/.bashrc || echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
+  grep -q 'KUBECONFIG' ~/.bashrc      || echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
+  grep -q 'KUBECONFIG' ~/.bash_profile || echo 'export KUBECONFIG=~/.kube/config' >> ~/.bash_profile
 "
 
 kubectl wait --for=condition=Ready nodes --all --timeout=120s
