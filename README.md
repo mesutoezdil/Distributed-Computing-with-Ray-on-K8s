@@ -4,6 +4,8 @@ Lab repo for *Cloud Native HPC and AI Infrastructure*, Chapter 6. Provisions a s
 
 Stack: OpenTofu (MPL-2.0), k3s, Ray 2.55.1, KubeRay 1.6.0, Kueue 0.17.0
 
+**This repo is the artifact companion to the book chapter.** The chapter contains the full step-by-step walkthrough: Ray architecture, KubeRay operator internals, autoscaling, Kueue integration, and the complete lab sequence with command-by-command explanations and expected outputs. The files here are what the chapter references; the chapter is where you learn what they do and why.
+
 The lab has two steps. Step 1 creates a VM and is provider-specific. Step 2 runs on the VM and works on any cloud. If you already have a 16-vCPU Ubuntu 22.04 VM with SSH access, skip step 1 and go directly to step 2.
 
 ---
