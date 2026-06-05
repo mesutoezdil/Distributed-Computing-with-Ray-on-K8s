@@ -77,6 +77,12 @@ cd ..
 ./scripts/10-bootstrap.sh
 ```
 
+If you provisioned the VM with a different provider (AWS, GCP, etc.), pass the IP directly — no Nebius CLI needed:
+
+```bash
+VM_IP="1.2.3.4" ./scripts/10-bootstrap.sh
+```
+
 This script:
 - Resolves the VM's public IP via Nebius CLI
 - Installs k3s (single-node Kubernetes) with correct TLS SAN

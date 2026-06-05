@@ -11,11 +11,15 @@ SSH_USER="${SSH_USER:-ubuntu}"
 KUBECONFIG_PATH="${KUBECONFIG_PATH:-$HOME/.kube/ray-lab.yaml}"
 
 # --- 1. Resolve VM public IP -------------------------------------------------
-VM_ID="$(tofu -chdir=tofu output -raw vm_id)"
-echo ">>> Resolving public IP for VM ${VM_ID}"
-VM_IP="$(nebius compute v1 instance get --id "${VM_ID}" --format json \
-  | jq -r '.status.network_interfaces[0].public_ip_address.address' \
-  | cut -d/ -f1)"
+# If VM_IP is already set (any provider), use it directly.
+# Otherwise fall back to Nebius CLI (requires tofu state + nebius CLI).
+if [ -z "${VM_IP:-}" ]; then
+  VM_ID="$(tofu -chdir=tofu output -raw vm_id)"
+  echo ">>> Resolving public IP for VM ${VM_ID} via Nebius CLI"
+  VM_IP="$(nebius compute v1 instance get --id "${VM_ID}" --format json \
+    | jq -r '.status.network_interfaces[0].public_ip_address.address' \
+    | cut -d/ -f1)"
+fi
 echo ">>> VM public IP: ${VM_IP}"
 
 # --- 2. Wait for SSH ----------------------------------------------------------
