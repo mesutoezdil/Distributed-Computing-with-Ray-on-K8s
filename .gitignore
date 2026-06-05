@@ -11,9 +11,8 @@ kubeconfig*
 # Python
 __pycache__/
 
-# IDE and local tool config
+# IDE
 .idea/
-.claude/
 
 # Book drafts: local only, never push
 book/
