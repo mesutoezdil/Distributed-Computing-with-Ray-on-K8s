@@ -123,6 +123,19 @@ export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
 
 ---
 
+## What this repo covers and what it doesn't
+
+This repo provisions a **single-VM smoke test environment** only. It validates the full pipeline end to end: Kueue admission, KubeRay cluster creation, Ray task scheduling, and result aggregation. The 10-worker smoke test is fully reproducible from this repo.
+
+**The 100-worker full run shown in Chapter 6 is not reproducible from this repo.** It requires:
+
+- A managed Kubernetes cluster (EKS, GKE, AKS, Nebius Managed Kubernetes, or equivalent) with ~430 vCPU available
+- A node group or node pool dedicated to Ray workers, ideally with node autoscaling
+- The Kueue quota in `k8s/kueue-setup.yaml` patched from 14 CPU to at least 500 CPU before submitting the job
+- The taint step from the chapter (`kubectl taint nodes -l node-role=ray-compute workload/ray=:NoSchedule`) applied to the Ray node group
+
+`k8s/rayjob-montecarlo.yaml` is included in the repo so you can apply it against a cluster that meets those requirements. The IaC to provision that cluster is not included: every managed Kubernetes provider exposes node groups differently, and a single-provider Terraform module would contradict the vendor-neutral approach of the chapter.
+
 ## Scaling up
 
-This setup validates the full pipeline on a single VM. To scale to a real multi-node cluster, replace `tofu/main.tf` with a managed Kubernetes resource, update the bootstrap script to fetch credentials from the cluster, and use `k8s/rayjob-montecarlo.yaml` for the 100-worker run (requires ~430 vCPU quota).
+To run the 100-worker job: provision a managed Kubernetes cluster through your provider's console or CLI, point `KUBECONFIG` at it, run `scripts/10-bootstrap.sh` with `VM_IP` unset (the script only installs KubeRay and Kueue; skip the k3s step for a managed cluster), patch the Kueue quota, and apply `k8s/rayjob-montecarlo.yaml`.
