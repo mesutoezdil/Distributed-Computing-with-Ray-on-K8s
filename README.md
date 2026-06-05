@@ -97,14 +97,17 @@ Expected output:
 ```
 Estimated option price: 6.0398
 Paths simulated: 200,000,000
-Wall time: 2.1s on 10 CPUs
+Wall time: 2.0s on 10 CPUs
 ```
 
 The price converges near the Black-Scholes closed-form value of ~6.04.
 
 ### Step 4: Tear everything down
 
+`tofu destroy` requires the SSH public key variable even on destroy. Export it first:
+
 ```bash
+export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
 ./scripts/99-teardown.sh
 ```
 
