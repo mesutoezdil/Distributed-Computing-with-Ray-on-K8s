@@ -140,4 +140,32 @@ This repo provisions a **single-VM smoke test environment** only. It validates t
 
 ## Scaling up
 
-To run the 100-worker job: provision a managed Kubernetes cluster through your provider's console or CLI, point `KUBECONFIG` at it, run `scripts/10-bootstrap.sh` with `VM_IP` unset (the script only installs KubeRay and Kueue; skip the k3s step for a managed cluster), patch the Kueue quota, and apply `k8s/rayjob-montecarlo.yaml`.
+`scripts/10-bootstrap.sh` is written for a single VM running k3s. It SSHes into the machine, installs k3s, then installs KubeRay and Kueue. It cannot be used as-is against a managed Kubernetes cluster (EKS, GKE, AKS, or similar).
+
+To run the 100-worker job on a managed cluster, install KubeRay and Kueue manually, then apply the lab manifests:
+
+```bash
+# 1. Point KUBECONFIG at your managed cluster
+export KUBECONFIG=<your-cluster-kubeconfig>
+
+# 2. Install KubeRay
+helm repo add kuberay https://ray-project.github.io/kuberay-helm/
+helm repo update
+helm install kuberay-operator kuberay/kuberay-operator \
+  --version 1.6.0 --namespace kuberay-system --create-namespace --wait
+
+# 3. Install Kueue
+kubectl apply --server-side -f \
+  https://github.com/kubernetes-sigs/kueue/releases/download/v0.17.0/manifests.yaml
+
+# 4. Create namespace, queue, and ConfigMap
+kubectl create namespace quant-team
+kubectl apply -f k8s/kueue-setup.yaml
+kubectl -n quant-team create configmap montecarlo-src --from-file=app/price_option.py
+
+# 5. Patch the quota for 100 workers (14 CPU default is sized for the smoke test)
+kubectl edit clusterqueue hpc-queue  # set cpu nominalQuota to 500, memory to 2000Gi
+
+# 6. Apply the full job
+kubectl apply -f k8s/rayjob-montecarlo.yaml
+```
