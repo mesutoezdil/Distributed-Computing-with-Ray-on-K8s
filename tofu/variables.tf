@@ -33,7 +33,7 @@ variable "vm_preset" {
 variable "image_family" {
   description = "Boot image family for the VM."
   type        = string
-  default     = "ubuntu-22-lts"
+  default     = "ubuntu22.04-driverless"
 }
 
 variable "boot_disk_size_gb" {
