@@ -1,10 +1,10 @@
 # Distributed Computing with Ray on K8s
 
-Lab repo for *Cloud Native HPC and AI Infrastructure*, Chapter 6. Spins up a Kubernetes cluster on Nebius, installs KubeRay and Kueue, and runs a 2-billion-path Monte Carlo simulation across 100 Ray workers.
+Lab repo for *Cloud Native HPC and AI Infrastructure*, Chapter 6. Provisions a single VM on Nebius, bootstraps k3s + KubeRay + Kueue inside it, and runs a Monte Carlo option pricing simulation across 10 Ray workers.
 
-**Stack:** OpenTofu (MPL-2.0) · Ray 2.55.1 · KubeRay 1.6.0 · Kueue 0.17.0 · Kubernetes 1.31+
+**Stack:** OpenTofu (MPL-2.0) · k3s · Ray 2.55.1 · KubeRay 1.6.0 · Kueue 0.17.0
 
-All components are open source. Manifests in `k8s/` are vendor-neutral; only `tofu/` is Nebius-specific — swap it for your provider's equivalent and everything else runs unchanged.
+All components are open source. The VM is created on Nebius via `tofu/` — swap it for any provider that gives you a 16-vCPU Ubuntu VM and everything else runs unchanged.
 
 ---
 
@@ -15,22 +15,22 @@ tofu/
   versions.tf          OpenTofu and Nebius provider version pins
   providers.tf         Provider config (credentials read from env)
   variables.tf         All input variables with descriptions
-  main.tf              3 resources: MK8s cluster, system node group, ray-compute node group
-  outputs.tf           Exports cluster_id and node group IDs
+  main.tf              1 resource: a 16-vCPU Ubuntu VM
+  outputs.tf           Exports vm_id (used by bootstrap to resolve the public IP)
 
 scripts/
   00-auth.sh           Fetches a Nebius IAM token and exports project_id + subnet_id
-  10-bootstrap.sh      Pulls kubeconfig, installs KubeRay + Kueue, creates namespace and queues
-  99-teardown.sh       Deletes all cloud resources and stops billing
+  10-bootstrap.sh      SSHes into the VM, installs k3s + KubeRay + Kueue, loads ConfigMap
+  99-teardown.sh       Deletes all cloud resources
 
 k8s/
-  kueue-setup.yaml              ResourceFlavor + ClusterQueue (500 CPU quota) + LocalQueue
-  rayjob-montecarlo-smoke.yaml  10 workers, 200 tasks — validates the pipeline cheaply
-  rayjob-montecarlo.yaml        100 workers, 2,000 tasks, 2B paths — the benchmark run
+  kueue-setup.yaml              ResourceFlavor + ClusterQueue (14 CPU quota) + LocalQueue
+  rayjob-montecarlo-smoke.yaml  10 workers, 200 tasks — validates the full pipeline
+  rayjob-montecarlo.yaml        100 workers, 2,000 tasks — for multi-node clusters
 
 app/
   price_option.py      Monte Carlo simulation (scale controlled via env vars)
-  Dockerfile           Optional: bake the script into an image; default path uses a ConfigMap
+  Dockerfile           Optional: bake the script into an image
 ```
 
 ---
@@ -40,11 +40,8 @@ app/
 - OpenTofu >= 1.8 → https://opentofu.org/docs/intro/install/
 - Nebius CLI installed and authenticated (`nebius profile create`)
 - `jq`, `kubectl` >= 1.31, `helm` >= 3.14
-- Nebius project with sufficient vCPU quota:
-  - System node: 4 vCPU (1× cpu-e2/4vcpu-16gb, always on)
-  - Smoke test: +16 vCPU (2× cpu-e2/16vcpu-64gb ray nodes)
-  - Full run: +544 vCPU (~34× cpu-e2/16vcpu-64gb ray nodes)
-  - Request a quota increase at Nebius → Administration → Limits if needed
+- An SSH key pair (`~/.ssh/id_rsa` or ed25519 equivalent)
+- Nebius project with at least 16 non-GPU vCPU quota in eu-north1
 
 ---
 
@@ -56,55 +53,47 @@ app/
 git clone https://github.com/mesutoezdil/Distributed-Computing-with-Ray-on-K8s.git
 cd Distributed-Computing-with-Ray-on-K8s
 source scripts/00-auth.sh
-# Output should show project_id and subnet_id populated
+export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_rsa.pub)"
 ```
 
-### 2. Provision the cluster
+### 2. Provision the VM
 
 ```bash
 cd tofu
-tofu init      # downloads the Nebius provider from the registry
-tofu plan      # previews what will be created, no cost yet
-tofu apply     # creates cluster + 1 system node (~5-10 min)
+tofu init
+tofu plan
+tofu apply     # creates 1 Ubuntu VM (~1-2 min)
 cd ..
 ```
 
-**What gets created:** 1 MK8s cluster (K8s 1.31, public endpoint), 1× cpu-e2/4vcpu-16gb system node (runs operators + Ray head), 1 autoscaling ray-compute node group (starts at 0 nodes, scales up when a job arrives).
+**What gets created:** 1× cpu-e2/16vcpu-64gb Ubuntu 22.04 VM with a public IP.
 
-**Cost:** System nodes bill hourly while running. Ray workers cost nothing when no job is active (0 nodes).
+**Cost:** ~$0.10–0.20/hour while running. Stopped by `tofu destroy`.
 
-### 3. Install Kubernetes tooling
+### 3. Bootstrap k3s + KubeRay + Kueue
 
 ```bash
 ./scripts/10-bootstrap.sh
-# - fetches kubeconfig via `nebius mk8s v1 cluster get-credentials`
+# - resolves VM public IP via Nebius CLI
+# - installs k3s (single-node Kubernetes)
 # - installs KubeRay 1.6.0 via Helm
-# - installs Kueue v0.17.0 via kubectl apply
-# - creates the quant-team namespace
-# - applies Kueue queue objects (500 CPU quota)
+# - installs Kueue v0.17.0
+# - creates quant-team namespace and queue objects
 # - loads price_option.py as a ConfigMap
+
+export KUBECONFIG=~/.kube/ray-lab.yaml
 ```
 
-### 4. Smoke test (cheap, 10 workers)
+### 4. Run the smoke test
 
 ```bash
 kubectl apply -f k8s/rayjob-montecarlo-smoke.yaml
 kubectl -n quant-team get rayjob montecarlo-smoke -w
 kubectl -n quant-team logs -l job-name=montecarlo-smoke --tail=5
-# Expected: price ~6.04, 200M paths, ~15-20 s
+# Expected: price ~6.04, 200M paths
 ```
 
-### 5. Full run (100 workers, 2B paths)
-
-```bash
-kubectl apply -f k8s/rayjob-montecarlo.yaml
-kubectl -n quant-team get workloads -w                            # watch Kueue admission
-kubectl -n quant-team get rayjob montecarlo-pricing -w
-kubectl -n quant-team logs -l job-name=montecarlo-pricing --tail=5
-# Expected: price ~6.04, 2,000,000,000 paths, 400 CPUs
-```
-
-### 6. Tear everything down
+### 5. Tear everything down
 
 ```bash
 ./scripts/99-teardown.sh
@@ -116,13 +105,15 @@ kubectl -n quant-team logs -l job-name=montecarlo-pricing --tail=5
 
 | State | Active resources | Duration |
 |-------|-----------------|----------|
-| Cluster up, no job | 1 system node | Ongoing |
-| Smoke test | +4 ray nodes | ~15-20 min |
-| Full run | +~34 ray nodes | ~30-40 min |
+| VM running, no job | 1× 16-vCPU VM | Ongoing |
+| Smoke test | same VM | ~5-10 min |
 | After `tofu destroy` | Nothing | — |
 
 ---
 
-## Reproducing the book numbers
+## Scaling up
 
-Set `ray_autoscaling_enabled = false` and `ray_max_nodes = 34` to pre-provision nodes so that node provisioning latency does not skew wall time. Record alongside your results: provider, region, platform/preset, node count, and Ray/KubeRay/Kueue versions.
+This setup runs on a single VM with k3s. To scale to a real multi-node cluster:
+1. Replace `tofu/main.tf` with an MK8s cluster resource (see git history)
+2. Update `scripts/10-bootstrap.sh` to use `nebius mk8s v1 cluster get-credentials`
+3. Use `k8s/rayjob-montecarlo.yaml` for the 100-worker full run

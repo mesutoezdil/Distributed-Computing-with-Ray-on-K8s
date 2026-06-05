@@ -1,25 +1,48 @@
 #!/usr/bin/env bash
-# Bootstrap the freshly provisioned cluster: kubeconfig, KubeRay 1.6.0,
-# Kueue 0.17.0, namespaces, queue objects, and the simulation ConfigMap.
+# Bootstrap a single-VM Ray lab: installs k3s, KubeRay, and Kueue on the VM
+# created by tofu, then loads the simulation code as a ConfigMap.
 # Run from the repo root after `tofu apply`.
 
 set -euo pipefail
 
 KUBERAY_VERSION="1.6.0"
 KUEUE_VERSION="v0.17.0"
+SSH_USER="${SSH_USER:-ubuntu}"
+KUBECONFIG_PATH="${KUBECONFIG_PATH:-$HOME/.kube/ray-lab.yaml}"
 
-# --- 1. Kubeconfig -----------------------------------------------------------
-# Pattern from the Nebius solutions library: read the cluster ID from TF state.
-CLUSTER_ID="$(tofu -chdir=tofu output -raw cluster_id)"
-echo ">>> Fetching kubeconfig for cluster ${CLUSTER_ID}"
-nebius mk8s v1 cluster get-credentials --id "${CLUSTER_ID}" --external
+# --- 1. Resolve VM public IP -------------------------------------------------
+VM_ID="$(tofu -chdir=tofu output -raw vm_id)"
+echo ">>> Resolving public IP for VM ${VM_ID}"
+VM_IP="$(nebius compute v1 instance get --id "${VM_ID}" --format json \
+  | jq -r '.status.network_interfaces[0].public_ip_address.address')"
+echo ">>> VM public IP: ${VM_IP}"
 
-echo ">>> Waiting for nodes"
-kubectl wait --for=condition=Ready nodes --all --timeout=300s
+# --- 2. Wait for SSH ----------------------------------------------------------
+echo ">>> Waiting for SSH to become available..."
+until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+    "${SSH_USER}@${VM_IP}" true 2>/dev/null; do
+  sleep 5
+done
+echo ">>> SSH ready"
+
+# --- 3. Install k3s -----------------------------------------------------------
+echo ">>> Installing k3s"
+ssh -o StrictHostKeyChecking=no "${SSH_USER}@${VM_IP}" \
+  'curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -s -'
+
+# --- 4. Fetch kubeconfig ------------------------------------------------------
+echo ">>> Fetching kubeconfig"
+mkdir -p "$(dirname "${KUBECONFIG_PATH}")"
+ssh "${SSH_USER}@${VM_IP}" 'sudo cat /etc/rancher/k3s/k3s.yaml' \
+  | sed "s/127.0.0.1/${VM_IP}/g" > "${KUBECONFIG_PATH}"
+export KUBECONFIG="${KUBECONFIG_PATH}"
+echo ">>> KUBECONFIG=${KUBECONFIG_PATH}"
+
+kubectl wait --for=condition=Ready nodes --all --timeout=120s
 kubectl get nodes -o wide
 
-# --- 2. KubeRay operator -----------------------------------------------------
-echo ">>> Installing KubeRay operator ${KUBERAY_VERSION}"
+# --- 5. KubeRay operator ------------------------------------------------------
+echo ">>> Installing KubeRay ${KUBERAY_VERSION}"
 helm repo add kuberay https://ray-project.github.io/kuberay-helm/ >/dev/null
 helm repo update >/dev/null
 helm upgrade --install kuberay-operator kuberay/kuberay-operator \
@@ -28,26 +51,23 @@ helm upgrade --install kuberay-operator kuberay/kuberay-operator \
   --create-namespace \
   --wait
 
-# --- 3. Kueue ----------------------------------------------------------------
+# --- 6. Kueue -----------------------------------------------------------------
 echo ">>> Installing Kueue ${KUEUE_VERSION}"
 kubectl apply --server-side -f \
   "https://github.com/kubernetes-sigs/kueue/releases/download/${KUEUE_VERSION}/manifests.yaml"
 kubectl -n kueue-system rollout status deployment/kueue-controller-manager --timeout=300s
 
-# --- 4. Namespaces and queues ------------------------------------------------
+# --- 7. Namespace, queue, ConfigMap -------------------------------------------
 echo ">>> Creating namespace and queue objects"
 kubectl create namespace quant-team --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/kueue-setup.yaml
 
-# --- 5. Simulation code as a ConfigMap ----------------------------------------
-# The RayJobs mount this into the head pod, so no container registry is needed
-# and the stock rayproject/ray image can be used as-is. (The book chapter bakes
-# the script into an image instead; both are equivalent at runtime.)
-echo ">>> Publishing price_option.py as a ConfigMap"
+echo ">>> Publishing price_option.py as ConfigMap"
 kubectl -n quant-team create configmap montecarlo-src \
   --from-file=app/price_option.py \
   --dry-run=client -o yaml | kubectl apply -f -
 
-echo ">>> Bootstrap complete. Next:"
-echo "    kubectl apply -f k8s/rayjob-montecarlo-smoke.yaml   # 10-worker validation"
-echo "    kubectl apply -f k8s/rayjob-montecarlo.yaml         # full 100-worker run"
+echo ""
+echo ">>> Bootstrap complete."
+echo "    Add to your shell: export KUBECONFIG=${KUBECONFIG_PATH}"
+echo "    Then run:          kubectl apply -f k8s/rayjob-montecarlo-smoke.yaml"

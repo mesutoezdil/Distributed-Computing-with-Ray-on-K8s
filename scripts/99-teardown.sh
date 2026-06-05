@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# Tear everything down. Deletes Ray workloads first so the autoscaled node
-# group drains, then destroys all Nebius resources via OpenTofu.
+# Tear down the Ray lab VM and all associated Nebius resources.
 
 set -euo pipefail
 
-echo ">>> Deleting Ray workloads (ignore not-found errors on a clean cluster)"
-kubectl -n quant-team delete rayjob --all --ignore-not-found=true || true
+# Delete Ray workloads if kubeconfig is available
+if [ -f "${KUBECONFIG:-$HOME/.kube/ray-lab.yaml}" ]; then
+  export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/ray-lab.yaml}"
+  echo ">>> Deleting Ray workloads"
+  kubectl -n quant-team delete rayjob --all --ignore-not-found=true || true
+fi
 
 echo ">>> Destroying infrastructure"
-tofu -chdir=tofu destroy
+source scripts/00-auth.sh
+tofu -chdir=tofu destroy -auto-approve
 
-echo ">>> Done. Verify in the Nebius console that no node groups remain."
+echo ">>> Done."
