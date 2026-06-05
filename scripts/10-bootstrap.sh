@@ -14,7 +14,8 @@ KUBECONFIG_PATH="${KUBECONFIG_PATH:-$HOME/.kube/ray-lab.yaml}"
 VM_ID="$(tofu -chdir=tofu output -raw vm_id)"
 echo ">>> Resolving public IP for VM ${VM_ID}"
 VM_IP="$(nebius compute v1 instance get --id "${VM_ID}" --format json \
-  | jq -r '.status.network_interfaces[0].public_ip_address.address')"
+  | jq -r '.status.network_interfaces[0].public_ip_address.address' \
+  | cut -d/ -f1)"
 echo ">>> VM public IP: ${VM_IP}"
 
 # --- 2. Wait for SSH ----------------------------------------------------------
@@ -28,7 +29,7 @@ echo ">>> SSH ready"
 # --- 3. Install k3s -----------------------------------------------------------
 echo ">>> Installing k3s"
 ssh -o StrictHostKeyChecking=no "${SSH_USER}@${VM_IP}" \
-  'curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -s -'
+  "curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='--disable traefik --tls-san ${VM_IP}' sh -s -"
 
 # --- 4. Fetch kubeconfig ------------------------------------------------------
 echo ">>> Fetching kubeconfig"
