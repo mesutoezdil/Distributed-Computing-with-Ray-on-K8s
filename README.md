@@ -53,7 +53,7 @@ app/
 git clone https://github.com/mesutoezdil/Distributed-Computing-with-Ray-on-K8s.git
 cd Distributed-Computing-with-Ray-on-K8s
 source scripts/00-auth.sh
-export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_rsa.pub)"
+export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
 ```
 
 ### 2. Provision the VM

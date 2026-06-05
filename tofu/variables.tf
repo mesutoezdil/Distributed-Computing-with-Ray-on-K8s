@@ -9,7 +9,7 @@ variable "subnet_id" {
 }
 
 variable "ssh_public_key" {
-  description = "SSH public key injected via cloud-init. Export with: export TF_VAR_ssh_public_key=\"$(cat ~/.ssh/id_rsa.pub)\""
+  description = "SSH public key injected via cloud-init. Export with: export TF_VAR_ssh_public_key=\"$(cat ~/.ssh/id_ed25519.pub)\""
   type        = string
 }
 
