@@ -8,6 +8,8 @@ Stack: OpenTofu (MPL-2.0), k3s, Ray 2.55.1, KubeRay 1.6.0, Kueue 0.17.0
 
 The lab has two steps. Step 1 creates a VM and is provider-specific. Step 2 runs on the VM and works on any cloud. If you already have a 16-vCPU Ubuntu 22.04 VM with SSH access, skip step 1 and go directly to step 2.
 
+<img width="1920" height="1080" alt="Screenshot 2026-06-05 at 15 38 23 (2)" src="https://github.com/user-attachments/assets/4c066177-6339-4a5d-a2b2-68ae3b6445e5" />
+
 ---
 
 ## Repository layout
