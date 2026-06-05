@@ -43,6 +43,14 @@ ssh "${SSH_USER}@${VM_IP}" 'sudo cat /etc/rancher/k3s/k3s.yaml' \
 export KUBECONFIG="${KUBECONFIG_PATH}"
 echo ">>> KUBECONFIG=${KUBECONFIG_PATH}"
 
+# Make kubectl work on the VM itself without any manual steps
+ssh "${SSH_USER}@${VM_IP}" "
+  mkdir -p ~/.kube
+  sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+  sudo chown ${SSH_USER}:${SSH_USER} ~/.kube/config
+  grep -q 'KUBECONFIG' ~/.bashrc || echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
+"
+
 kubectl wait --for=condition=Ready nodes --all --timeout=120s
 kubectl get nodes -o wide
 
