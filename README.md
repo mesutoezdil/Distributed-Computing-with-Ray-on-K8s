@@ -29,13 +29,20 @@ scripts/
   99-teardown.sh       Deletes all Nebius resources via tofu destroy
 
 k8s/
-  kueue-setup.yaml              ResourceFlavor + ClusterQueue (14 CPU) + LocalQueue
+  kueue-setup.yaml              ResourceFlavor + ClusterQueue (14 CPU) + LocalQueue (v1beta2)
   rayjob-montecarlo-smoke.yaml  10 workers, 200 tasks, 200M paths
   rayjob-montecarlo.yaml        100 workers, 2,000 tasks (multi-node clusters)
 
 app/
   price_option.py      Monte Carlo simulation (scale via NUM_TASKS / PATHS_PER_TASK)
   Dockerfile           Optional: bake the script into an image
+
+diagrams/
+  01-architecture.mmd          Full cluster: Kueue, KubeRay, Ray head/workers, autoscaling
+  02-rayjob-lifecycle.mmd      RayJob sequence: quota check through cluster teardown
+  03-object-store-and-task-flow.mmd  ObjectRef zero-copy (same node) vs network transfer
+  04-autoscaling-layers.mmd    4-layer scaling: Kueue, Ray tasks, Ray autoscaler, node autoscaler
+  README.md                    How to render diagrams with mermaid-cli or mermaid.live
 ```
 
 ---
