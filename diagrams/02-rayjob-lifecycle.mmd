@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant Dev as Developer
+    participant KQ as Kueue
+    participant KR as KubeRay
+    participant Head as Head Pod
+    participant Sub as Submitter
+    participant W as Workers
+
+    Dev->>KQ: kubectl apply RayJob
+    Note over KQ: quota check
+
+    alt quota available
+        KQ->>KR: unsuspend
+        KR->>Head: create head + Service
+        KR->>W: create worker pods
+        W->>Head: register :6379
+        KR->>Sub: create submitter
+        Sub->>Head: ray job submit :8265
+        Head->>W: dispatch tasks
+        W-->>Head: return results
+        Head-->>Sub: SUCCEEDED
+        KR->>Head: delete cluster
+        KR->>Sub: delete submitter
+        KQ->>KQ: release quota
+    else quota full
+        Note over KQ: hold — 0 pods
+    end

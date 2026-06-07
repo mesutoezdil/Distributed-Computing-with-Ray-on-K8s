@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph L0[Layer 0 — between jobs]
+        KQ[Kueue\nquota · fair-share\ngang admission]
+    end
+
+    subgraph L1[Layer 1 — application]
+        Tasks[Pending tasks\nand actors]
+    end
+
+    subgraph L2[Layer 2 — Ray]
+        RAS[Ray Autoscaler\nadd / remove worker pods\nscale-to-zero]
+    end
+
+    subgraph L3[Layer 3 — Kubernetes]
+        NAS[Node Autoscaler\nCluster Autoscaler\nor Karpenter]
+        Nodes[Machines]
+    end
+
+    KQ -- "admit whole cluster\nor hold" --> Tasks
+    Tasks -- "pending demand" --> RAS
+    RAS -- "unschedulable pods" --> NAS
+    NAS -- "provision" --> Nodes

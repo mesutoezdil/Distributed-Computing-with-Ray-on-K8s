@@ -1,0 +1,25 @@
+flowchart LR
+    Put["ray.put(data)"] --> Ref[ObjectRef]
+    Ref --> T1[Task A\nsame node]
+    Ref --> T2[Task B\nsame node]
+    Ref --> T3[Task C\nother node]
+
+    subgraph NodeA[Node A — Object Store]
+        T1
+        T2
+        Ref
+    end
+
+    subgraph NodeB[Node B — Object Store]
+        T3
+        Copy[data copy\non dereference]
+    end
+
+    Ref -- "network transfer" --> Copy
+    Copy --> T3
+
+    T1 -- scalar --> Get["ray.get(refs)"]
+    T2 -- scalar --> Get
+    T3 -- scalar --> Get
+
+    Get --> Result[option price]

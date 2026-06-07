@@ -1,0 +1,50 @@
+flowchart TB
+    Dev([Developer])
+
+    subgraph K8s[Kubernetes Cluster]
+
+        subgraph CP[Operators / Controllers]
+            KQ[Kueue\nquota · priority · gang]
+            KR[KubeRay Operator]
+            NA[Node Autoscaler]
+        end
+
+        subgraph Ray[Ray Cluster]
+            subgraph Head[Head Pod]
+                GCS[GCS]
+                AS[Autoscaler sidecar]
+                API[Job API :8265]
+                HR[Raylet + Object Store]
+            end
+            SUB[Submitter Pod]
+            subgraph WW[Worker Pods]
+                WR[Raylet + Object Store]
+            end
+        end
+
+        subgraph Infra[Infrastructure]
+            Redis[(Redis)]
+            Prom[Prometheus]
+            Secret[Secret\nauth token]
+        end
+
+        Nodes[Dedicated Nodes\ntaint: workload/ray]
+    end
+
+    Dev -- "kubectl apply RayJob\nsuspend: true" --> KQ
+    KQ -- "quota OK → unsuspend" --> KR
+    KQ -. "quota full → hold" .-> KQ
+    KR -- "creates auth Secret" --> Secret
+    KR --> Head
+    KR --> WW
+    KR --> SUB
+    SUB -- "job submit" --> API
+    GCS <--> Redis
+    AS -- "add/remove\nworker pods" --> WW
+    WW -. "unschedulable pods\ntrigger" .-> NA
+    NA -- "provision" --> Nodes
+    Head -. runs on .-> Nodes
+    WW -. runs on .-> Nodes
+    HR <-- "tasks · objects" --> WR
+    Prom -. scrape .-> Head
+    Prom -. scrape .-> WW
