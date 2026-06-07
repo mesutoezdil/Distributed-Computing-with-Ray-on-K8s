@@ -6,10 +6,6 @@ Stack: OpenTofu, k3s, Ray 2.55.1, KubeRay 1.6.0, Kueue 0.17.0
 
 The chapter contains the full walkthrough. The files here are what the chapter references.
 
-<img width="1920" height="1080" alt="Screenshot 2026-06-05 at 15 38 23 (2)" src="https://github.com/user-attachments/assets/4c066177-6339-4a5d-a2b2-68ae3b6445e5" />
-
----
-
 ## Repository layout
 
 ```
@@ -27,14 +23,10 @@ app/
 diagrams/          Mermaid architecture diagrams (see diagrams/README.md)
 ```
 
----
-
 ## Prerequisites
 
 - `kubectl` >= 1.31, `helm` >= 3.14, `jq`, SSH key pair
 - Nebius users also need: OpenTofu >= 1.8, Nebius CLI authenticated, 16+ non-GPU vCPU quota in eu-north1
-
----
 
 ## Quickstart
 
@@ -82,8 +74,6 @@ Wall time: 2.0s on 10 CPUs
 export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
 ./scripts/99-teardown.sh
 ```
-
----
 
 ## Scope
 
