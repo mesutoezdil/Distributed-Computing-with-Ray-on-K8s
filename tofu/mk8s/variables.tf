@@ -1,7 +1,7 @@
 variable "project_id" {
-  description = "eu-west1 project ID. Default is the ray-eu-west1 project created for this run."
+  description = "eu-west1 project ID (default-project-eu-west1 in tenant-e00rfffn51mhgh0sj4)."
   type        = string
-  default     = "project-e01shg0apr00wftx32nr8y"
+  default     = "project-e01tkjrppr00fkkw8yf294"
 }
 
 variable "ssh_public_key" {

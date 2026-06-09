@@ -52,5 +52,5 @@ spec:
               - name: ray-worker
                 image: rayproject/ray:2.55.1
                 resources:
-                  requests: { cpu: "4", memory: 8Gi }
-                  limits: { cpu: "4", memory: 8Gi }
+                  requests: { cpu: "3500m", memory: 8Gi }
+                  limits: { cpu: "3500m", memory: 8Gi }

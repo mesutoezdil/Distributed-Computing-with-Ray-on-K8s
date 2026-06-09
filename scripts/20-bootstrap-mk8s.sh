@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-CLUSTER_ID="mk8scluster-e01e0qrs3vbtj2yqec"
+CLUSTER_ID="${CLUSTER_ID:-$(tofu -chdir=tofu/mk8s output -raw cluster_id)}"
 KUBECONFIG_PATH="${KUBECONFIG_PATH:-$HOME/.kube/ray-mk8s.yaml}"
 KUBERAY_VERSION="1.6.0"
 KUEUE_VERSION="v0.17.0"
