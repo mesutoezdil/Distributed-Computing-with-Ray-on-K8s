@@ -1,6 +1,7 @@
 variable "project_id" {
-  description = "Nebius project ID. Exported as TF_VAR_project_id by scripts/00-auth.sh."
+  description = "eu-west1 project ID. Default is the ray-eu-west1 project created for this run."
   type        = string
+  default     = "project-e01shg0apr00wftx32nr8y"
 }
 
 variable "ssh_public_key" {
@@ -33,7 +34,7 @@ variable "ray_max_nodes" {
 }
 
 variable "ray_node_preset" {
-  description = "Compute preset for ray-compute nodes. 4vcpu-16gb = 4 vCPU per worker."
+  description = "Compute preset for ray-compute nodes. 4vcpu-16gb on cpu-d3 = 4 vCPU per worker (eu-west1)."
   type        = string
   default     = "4vcpu-16gb"
 }

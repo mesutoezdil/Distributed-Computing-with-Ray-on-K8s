@@ -1,11 +1,11 @@
 resource "nebius_vpc_v1_network" "mk8s" {
-  provider  = nebius.eu-west1
+
   parent_id = var.project_id
   name      = "mk8s-network"
 }
 
 resource "nebius_vpc_v1_subnet" "mk8s" {
-  provider   = nebius.eu-west1
+
   parent_id  = var.project_id
   name       = "mk8s-subnet"
   network_id = nebius_vpc_v1_network.mk8s.id
@@ -19,7 +19,7 @@ resource "nebius_vpc_v1_subnet" "mk8s" {
 }
 
 resource "nebius_mk8s_v1_cluster" "ray" {
-  provider  = nebius.eu-west1
+
   parent_id = var.project_id
   name      = "ray-cluster"
 
@@ -33,7 +33,7 @@ resource "nebius_mk8s_v1_cluster" "ray" {
 }
 
 resource "nebius_mk8s_v1_node_group" "system" {
-  provider  = nebius.eu-west1
+
   parent_id = nebius_mk8s_v1_cluster.ray.id
   name      = "system"
 
@@ -41,7 +41,7 @@ resource "nebius_mk8s_v1_node_group" "system" {
 
   template = {
     resources = {
-      platform = "cpu-e2"
+      platform = "cpu-d3"
       preset   = "8vcpu-32gb"
     }
     boot_disk = {
@@ -59,13 +59,14 @@ resource "nebius_mk8s_v1_node_group" "system" {
             - ${var.ssh_public_key}
     EOT
     network_interfaces = [{
+      subnet_id         = nebius_vpc_v1_subnet.mk8s.id
       public_ip_address = {}
     }]
   }
 }
 
 resource "nebius_mk8s_v1_node_group" "ray_compute" {
-  provider  = nebius.eu-west1
+
   parent_id = nebius_mk8s_v1_cluster.ray.id
   name      = "ray-compute"
 
@@ -76,7 +77,7 @@ resource "nebius_mk8s_v1_node_group" "ray_compute" {
 
   template = {
     resources = {
-      platform = "cpu-e2"
+      platform = "cpu-d3"
       preset   = var.ray_node_preset
     }
     boot_disk = {
@@ -94,6 +95,7 @@ resource "nebius_mk8s_v1_node_group" "ray_compute" {
             - ${var.ssh_public_key}
     EOT
     network_interfaces = [{
+      subnet_id         = nebius_vpc_v1_subnet.mk8s.id
       public_ip_address = {}
     }]
     taints = [{
